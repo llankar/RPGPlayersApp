@@ -12,8 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.websockets import WebSocketState
 
-from .models import AppState, Diagram, DisplayContent, Note
-from .storage import load_state, save_state
+from backend.models import AppState, Diagram, DisplayContent, Note
+from backend.storage import load_state, save_state
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
