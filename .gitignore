@@ -3,6 +3,8 @@ __pycache__/
 .env
 node_modules/
 frontend/node_modules/
-backend/static/
+backend/static/*
+!backend/static/.gitkeep
+!backend/static/index.html
 data/state.json
 .DS_Store
