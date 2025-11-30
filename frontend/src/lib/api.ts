@@ -48,6 +48,13 @@ export async function createDiagram(diagram: Omit<Diagram, 'id'>): Promise<Diagr
   });
 }
 
+export async function updateDiagram(diagram: Diagram): Promise<Diagram> {
+  return jsonRequest<Diagram>(`${baseUrl}/diagrams/${diagram.id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(diagram)
+  });
+}
+
 export async function setDisplay(display: DisplayContent): Promise<DisplayContent> {
   return jsonRequest<DisplayContent>(`${baseUrl}/display`, {
     method: 'PUT',

@@ -77,6 +77,10 @@ def _find_note(note_id: UUID) -> Note | None:
     return next((n for n in STATE.notes if str(n.id) == str(note_id)), None)
 
 
+def _find_diagram(diagram_id: UUID) -> Diagram | None:
+    return next((d for d in STATE.diagrams if str(d.id) == str(diagram_id)), None)
+
+
 def _persist_state() -> None:
     """Persist the current state to disk."""
     save_state(STATE)
@@ -128,6 +132,23 @@ async def create_diagram(diagram: Diagram) -> Diagram:
     _persist_state()
     await manager.broadcast({"event": "diagram_changed", "diagram": diagram.dict()})
     return diagram
+
+
+@app.patch("/diagrams/{diagram_id}", response_model=Diagram)
+async def update_diagram(diagram_id: UUID, diagram_update: Diagram) -> Diagram:
+    """Replace a stored diagram with new data while keeping the identifier stable."""
+
+    existing = _find_diagram(diagram_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Diagram not found")
+
+    updated_diagram = diagram_update.copy(update={"id": existing.id})
+    STATE.diagrams = [
+        updated_diagram if str(d.id) == str(diagram_id) else d for d in STATE.diagrams
+    ]
+    _persist_state()
+    await manager.broadcast({"event": "diagram_changed", "diagram": updated_diagram.dict()})
+    return updated_diagram
 
 
 @app.put("/display", response_model=DisplayContent)

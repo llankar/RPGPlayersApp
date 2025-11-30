@@ -1,5 +1,14 @@
 import { derived, writable } from 'svelte/store';
-import { createDiagram, createNote, createSocket, deleteNote, fetchState, setDisplay, updateNote } from './api';
+import {
+  createDiagram,
+  createNote,
+  createSocket,
+  deleteNote,
+  fetchState,
+  setDisplay,
+  updateDiagram,
+  updateNote
+} from './api';
 import type { AppState, Diagram, DisplayContent, Note, WsEventMap } from './types';
 
 const initialState: AppState = { notes: [], diagrams: [], display: null };
@@ -61,6 +70,14 @@ export async function removeNote(id: string): Promise<void> {
 export async function submitDiagram(diagram: Omit<Diagram, 'id'>): Promise<void> {
   const created = await createDiagram(diagram);
   state.update((current) => ({ ...current, diagrams: [...current.diagrams, created] }));
+}
+
+export async function patchDiagram(diagram: Diagram): Promise<void> {
+  const updated = await updateDiagram(diagram);
+  state.update((current) => ({
+    ...current,
+    diagrams: current.diagrams.map((d) => (d.id === updated.id ? updated : d))
+  }));
 }
 
 export async function updateDisplay(displayContent: DisplayContent): Promise<void> {

@@ -40,6 +40,7 @@ class Diagram(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     nodes: List[DiagramNode] = Field(default_factory=list)
     edges: List[DiagramEdge] = Field(default_factory=list)
+    shared: bool = False
 
 
 class DisplayContent(BaseModel):
