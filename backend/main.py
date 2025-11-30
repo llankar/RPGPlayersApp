@@ -9,6 +9,7 @@ from typing import Dict, List
 from uuid import UUID
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.websockets import WebSocketState
@@ -57,7 +58,7 @@ class WebSocketManager:
 
     async def broadcast(self, message: Dict) -> None:
         """Send the message to all connected clients, pruning closed sockets."""
-        serialized = json.dumps(message)
+        serialized = json.dumps(jsonable_encoder(message))
         for connection in list(self.active_connections):
             if connection.application_state == WebSocketState.DISCONNECTED:
                 self.disconnect(connection)
