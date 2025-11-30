@@ -4,7 +4,8 @@ __pycache__/
 node_modules/
 frontend/node_modules/
 backend/static/*
-!backend/static/.gitkeep
+!backend/static/assets/
+!backend/static/assets/**
 !backend/static/index.html
 data/state.json
 .DS_Store
