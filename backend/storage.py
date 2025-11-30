@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .models import AppState
+from backend.models import AppState
 
 # Store data relative to the repository root so uvicorn can be started anywhere.
 BASE_DIR = Path(__file__).resolve().parent.parent
