@@ -34,4 +34,4 @@ def load_state() -> AppState:
 def save_state(state: AppState) -> None:
     """Persist the application state as JSON on disk."""
     ensure_data_dir()
-    DATA_PATH.write_text(state.json(indent=2), encoding="utf-8")
+    DATA_PATH.write_text(state.model_dump_json(indent=2), encoding="utf-8")
