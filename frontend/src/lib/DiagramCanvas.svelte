@@ -91,7 +91,15 @@
     stage?.destroy();
   });
 
-  $: draw();
+  $: {
+    // Redraw whenever the diagram inputs or readonly flag change.
+    nodes;
+    edges;
+    readonly;
+    if (stage && layer) {
+      draw();
+    }
+  }
 </script>
 
 <div class="diagram-frame" bind:this={container}></div>
