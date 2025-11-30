@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Dict, List
 from uuid import UUID
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Response, WebSocket, WebSocketDisconnect
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -116,10 +116,11 @@ async def update_note(note_id: UUID, note_update: Note) -> Note:
 
 
 @app.delete("/notes/{note_id}", status_code=204)
-async def delete_note(note_id: UUID) -> None:
+async def delete_note(note_id: UUID) -> Response:
     STATE.notes = [n for n in STATE.notes if str(n.id) != str(note_id)]
     _persist_state()
     await manager.broadcast({"event": "note_updated", "note_id": str(note_id)})
+    return Response(status_code=204)
 
 
 @app.get("/diagrams", response_model=List[Diagram])
