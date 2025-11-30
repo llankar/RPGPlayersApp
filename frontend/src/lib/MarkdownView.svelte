@@ -13,12 +13,12 @@
     color: #e8f0ff;
     line-height: 1.6;
   }
-  .markdown h1,
-  .markdown h2,
-  .markdown h3 {
+  :global(.markdown h1),
+  :global(.markdown h2),
+  :global(.markdown h3) {
     color: #bbdefb;
   }
-  .markdown a {
+  :global(.markdown a) {
     color: #90caf9;
   }
 </style>

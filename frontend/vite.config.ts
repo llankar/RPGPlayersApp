@@ -4,6 +4,11 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [svelte()],
+  resolve: {
+    alias: {
+      $lib: path.resolve(__dirname, './src/lib')
+    }
+  },
   build: {
     outDir: path.resolve(__dirname, '../backend/static'),
     emptyOutDir: true

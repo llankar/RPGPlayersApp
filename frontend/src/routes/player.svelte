@@ -1,7 +1,8 @@
 <script lang="ts">
   import DiagramCanvas from '$lib/DiagramCanvas.svelte';
   import MarkdownView from '$lib/MarkdownView.svelte';
-  import { diagrams, notes, patchNote, submitDiagram, submitNote, updateDisplay } from '$lib/state';
+  import MarkdownEditor from '$lib/components/MarkdownEditor.svelte';
+  import { diagrams, notes, patchDiagram, patchNote, submitDiagram, submitNote, updateDisplay } from '$lib/state';
   import type { DiagramEdge, DiagramNode, Note } from '$lib/types';
   import { v4 as uuidv4 } from 'uuid';
 
@@ -49,7 +50,7 @@
     }
     error = null;
     try {
-      await submitDiagram({ nodes: diagramNodes, edges: diagramEdges });
+      await submitDiagram({ nodes: diagramNodes, edges: diagramEdges, shared: false });
       diagramNodes = [];
       diagramEdges = [];
     } catch (e) {
@@ -67,6 +68,16 @@
 
   const shareDiagram = async (id: string) => {
     await updateDisplay({ type: 'diagram', id });
+  };
+
+  const toggleDiagramShare = async (id: string) => {
+    const target = $diagrams.find((d) => d.id === id);
+    if (!target) return;
+    const updated = { ...target, shared: !target.shared };
+    await patchDiagram(updated);
+    if (updated.shared) {
+      await updateDisplay({ type: 'diagram', id: updated.id });
+    }
   };
 
   const moveNode = (id: string, x: number, y: number) => {
@@ -89,6 +100,7 @@
   <div class="grid">
     <div class="panel">
       <h2>New note</h2>
+      <p class="subtitle">Compose a note using Markdown and keep it private or share it when ready.</p>
       <label>
         Title
         <input bind:value={title} placeholder="Short title" />
@@ -97,10 +109,7 @@
         Author
         <input bind:value={author} placeholder="Your name" />
       </label>
-      <label>
-        Body (Markdown)
-        <textarea rows="6" bind:value={body} placeholder="Write your note in Markdown"></textarea>
-      </label>
+      <MarkdownEditor label="Body" placeholder="Write your note in Markdown" bind:value={body} />
       <button on:click|preventDefault={submitNoteForm}>Save note</button>
     </div>
 
@@ -161,7 +170,13 @@
           {#each $diagrams as diagram (diagram.id)}
             <div class="diagram-item">
               <p><strong>ID:</strong> {diagram.id}</p>
-              <button on:click={() => shareDiagram(diagram.id)}>Share to display</button>
+              <div class="diagram-actions">
+                <label class="toggle">
+                  <input type="checkbox" checked={diagram.shared} on:change={() => toggleDiagramShare(diagram.id)} />
+                  <span>Share</span>
+                </label>
+                <button on:click={() => shareDiagram(diagram.id)}>Send to display now</button>
+              </div>
               <DiagramCanvas nodes={diagram.nodes} edges={diagram.edges} readonly />
             </div>
           {/each}
@@ -188,6 +203,10 @@
     margin: 4px 0 0;
     color: #b3c6e0;
   }
+  .subtitle {
+    margin: 4px 0 12px 0;
+    color: #9bb8db;
+  }
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -208,7 +227,6 @@
     color: #b3c6e0;
   }
   input,
-  textarea,
   select {
     padding: 8px;
     border-radius: 6px;
@@ -265,6 +283,13 @@
     border-radius: 8px;
     padding: 12px;
     background: #0f253b;
+  }
+  .diagram-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
   }
   .edge-form {
     display: flex;

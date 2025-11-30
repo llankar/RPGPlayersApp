@@ -24,6 +24,7 @@ export interface Diagram {
   id: UUID;
   nodes: DiagramNode[];
   edges: DiagramEdge[];
+  shared: boolean;
 }
 
 export interface DisplayContent {
