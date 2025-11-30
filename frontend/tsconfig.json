@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "types": ["svelte"]
+  },
+  "include": ["src/**/*.d.ts", "src/**/*.ts", "src/**/*.svelte", "vite.config.ts"],
+  "references": [{ "path": "./tsconfig.app.json" }]
+}

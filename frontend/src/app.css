@@ -1,0 +1,23 @@
+:root {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: #e8f0ff;
+  background-color: #0d1726;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #0d1726;
+}
+
+a {
+  color: inherit;
+}
+
+main {
+  min-height: 100vh;
+}
+
+button {
+  cursor: pointer;
+}

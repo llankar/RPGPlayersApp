@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "es2017",
+    "lib": ["es2017", "dom"],
+    "strict": true,
+    "types": ["svelte"],
+    "baseUrl": ".",
+    "paths": {
+      "$lib/*": ["src/lib/*"]
+    }
+  },
+  "include": ["src/**/*.d.ts", "src/**/*.ts", "src/**/*.svelte"],
+  "exclude": ["node_modules/*", "backend/*"]
+}
