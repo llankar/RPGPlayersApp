@@ -23,6 +23,8 @@ from backend.storage import load_state, save_state
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
+# Ensure the static directory exists so FastAPI can mount it even before builds run.
+STATIC_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="TableApp")
 
