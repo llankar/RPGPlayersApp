@@ -11,6 +11,7 @@
   let container: HTMLDivElement;
   let stage: Konva.Stage;
   let layer: Konva.Layer;
+  let resizeObserver: ResizeObserver;
 
   const draw = () => {
     if (!stage || !layer) return;
@@ -82,12 +83,15 @@
     });
     layer = new Konva.Layer();
     stage.add(layer);
+    resizeObserver = new ResizeObserver(() => resizeStage());
+    resizeObserver.observe(container);
     draw();
     window.addEventListener('resize', resizeStage);
   });
 
   onDestroy(() => {
     window.removeEventListener('resize', resizeStage);
+    resizeObserver?.disconnect();
     stage?.destroy();
   });
 
