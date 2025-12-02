@@ -1,186 +1,146 @@
 <script lang="ts">
-  import DiagramCanvas from '$lib/DiagramCanvas.svelte';
-  import MarkdownView from '$lib/MarkdownView.svelte';
-  import MarkdownEditor from '$lib/components/MarkdownEditor.svelte';
-  import { diagrams, notes, patchDiagram, patchNote, submitDiagram, submitNote, updateDisplay } from '$lib/state';
-  import type { DiagramEdge, DiagramNode, Note } from '$lib/types';
+  import WhiteboardSurface from '$lib/whiteboard/Whiteboard.svelte';
+  import { patchWhiteboard, submitWhiteboard, updateDisplay, whiteboards } from '$lib/state';
+  import type { Whiteboard } from '$lib/types';
   import { v4 as uuidv4 } from 'uuid';
 
-  let title = '';
-  let author = '';
-  let body = '';
+  const createBoard = (): Whiteboard => ({
+    id: uuidv4(),
+    title: 'New whiteboard',
+    layers: [
+      {
+        id: uuidv4(),
+        name: 'Base',
+        visible: true,
+        order: 0
+      }
+    ],
+    strokes: [],
+    shapes: [],
+    text_items: [],
+    sticky_notes: [],
+    connectors: [],
+    images: [],
+    assets: [],
+    shared: false
+  });
+
+  let workingBoard: Whiteboard = createBoard();
+  let selectedBoardId: string | null = null;
+  let status = '';
   let error: string | null = null;
 
-  let diagramNodes: DiagramNode[] = [];
-  let diagramEdges: DiagramEdge[] = [];
-  let edgeSource = '';
-  let edgeTarget = '';
+  $: if (selectedBoardId) {
+    const found = $whiteboards.find((w) => w.id === selectedBoardId);
+    if (found) {
+      workingBoard = structuredClone(found);
+    }
+  }
 
-  const addNode = () => {
-    const count = diagramNodes.length + 1;
-    diagramNodes = [
-      ...diagramNodes,
-      { id: uuidv4(), label: `Node ${count}`, x: 80 + count * 40, y: 80 + count * 20 }
-    ];
-  };
-
-  const addEdge = () => {
-    if (!edgeSource || !edgeTarget || edgeSource === edgeTarget) return;
-    diagramEdges = [...diagramEdges, { source_id: edgeSource, target_id: edgeTarget }];
-    edgeSource = '';
-    edgeTarget = '';
-  };
-
-  const submitNoteForm = async () => {
+  const resetFeedback = () => {
+    status = '';
     error = null;
+  };
+
+  const startNewBoard = () => {
+    resetFeedback();
+    selectedBoardId = null;
+    workingBoard = createBoard();
+  };
+
+  const handleChange = (event: CustomEvent<{ board: Whiteboard }>) => {
+    resetFeedback();
+    workingBoard = event.detail.board;
+  };
+
+  const saveBoard = async () => {
+    resetFeedback();
+    const existing = $whiteboards.find((b) => b.id === workingBoard.id);
     try {
-      await submitNote({ title, author, body_md: body, shared: false });
-      title = '';
-      author = '';
-      body = '';
+      const saved = existing ? await patchWhiteboard(workingBoard) : await submitWhiteboard(workingBoard);
+      workingBoard = structuredClone(saved);
+      status = 'Whiteboard saved';
+      selectedBoardId = saved.id;
     } catch (e) {
       error = (e as Error).message;
     }
   };
 
-  const saveDiagram = async () => {
-    if (!diagramNodes.length) {
-      error = 'Add at least one node before saving the diagram.';
-      return;
-    }
-    error = null;
+  const toggleShare = async (board: Whiteboard) => {
+    resetFeedback();
     try {
-      await submitDiagram({ nodes: diagramNodes, edges: diagramEdges, shared: false });
-      diagramNodes = [];
-      diagramEdges = [];
+      const updated = await patchWhiteboard({ ...board, shared: !board.shared });
+      workingBoard = structuredClone(updated.id === workingBoard.id ? updated : workingBoard);
+      if (updated.shared) {
+        await updateDisplay({ type: 'whiteboard', id: updated.id });
+        status = 'Shared to display';
+      }
     } catch (e) {
       error = (e as Error).message;
     }
   };
 
-  const toggleShare = async (note: Note) => {
-    const updated = { ...note, shared: !note.shared };
-    await patchNote(updated);
-    if (updated.shared) {
-      await updateDisplay({ type: 'note', id: updated.id });
-    }
-  };
-
-  const shareDiagram = async (id: string) => {
-    await updateDisplay({ type: 'diagram', id });
-  };
-
-  const toggleDiagramShare = async (id: string) => {
-    const target = $diagrams.find((d) => d.id === id);
-    if (!target) return;
-    const updated = { ...target, shared: !target.shared };
-    await patchDiagram(updated);
-    if (updated.shared) {
-      await updateDisplay({ type: 'diagram', id: updated.id });
-    }
-  };
-
-  const moveNode = (id: string, x: number, y: number) => {
-    diagramNodes = diagramNodes.map((n) => (n.id === id ? { ...n, x, y } : n));
+  const sendToDisplay = async (board: Whiteboard) => {
+    resetFeedback();
+    await updateDisplay({ type: 'whiteboard', id: board.id });
+    status = 'Sent to display';
   };
 </script>
 
 <section class="page">
   <header>
     <div>
-      <h1>TableApp Player</h1>
-      <p>Create notes and diagrams, then share them to the table display.</p>
+      <p class="eyebrow">RPG Table Toolkit</p>
+      <h1>Collaborative whiteboard</h1>
+      <p class="subtitle">
+        Draw, drop sticky notes, wire connectors, and share the canvas live with your table display.
+      </p>
     </div>
+    <button class="ghost" on:click={startNewBoard}>Start fresh</button>
   </header>
 
-  {#if error}
-    <div class="banner">{error}</div>
-  {/if}
-
-  <div class="grid">
+  <div class="columns">
     <div class="panel">
-      <h2>New note</h2>
-      <p class="subtitle">Compose a note using Markdown and keep it private or share it when ready.</p>
-      <label>
-        Title
-        <input bind:value={title} placeholder="Short title" />
-      </label>
-      <label>
-        Author
-        <input bind:value={author} placeholder="Your name" />
-      </label>
-      <MarkdownEditor label="Body" placeholder="Write your note in Markdown" bind:value={body} />
-      <button on:click|preventDefault={submitNoteForm}>Save note</button>
-    </div>
-
-    <div class="panel">
-      <h2>Live preview</h2>
-      <MarkdownView markdown={body || '*Start typing to see the preview*'} />
-    </div>
-  </div>
-
-  <div class="panel">
-    <h2>Notes</h2>
-    <div class="note-list">
-      {#each $notes as note (note.id)}
-        <article>
-          <div class="note-head">
-            <div>
-              <h3>{note.title}</h3>
-              <small>By {note.author}</small>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" checked={note.shared} on:change={() => toggleShare(note)} />
-              <span>Share</span>
-            </label>
-          </div>
-          <MarkdownView markdown={note.body_md} />
-        </article>
-      {/each}
-    </div>
-  </div>
-
-  <div class="panel">
-    <h2>Diagram builder</h2>
-    <div class="diagram-grid">
-      <div>
-        <button on:click={addNode}>Add node</button>
-        <div class="edge-form">
-          <select bind:value={edgeSource}>
-            <option value="">Source</option>
-            {#each diagramNodes as node}
-              <option value={node.id}>{node.label}</option>
-            {/each}
-          </select>
-          <select bind:value={edgeTarget}>
-            <option value="">Target</option>
-            {#each diagramNodes as node}
-              <option value={node.id}>{node.label}</option>
-            {/each}
-          </select>
-          <button on:click={addEdge}>Add edge</button>
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Board</p>
+          <h2>{workingBoard.title}</h2>
         </div>
-        <p class="hint">Drag nodes to reposition them before saving.</p>
-        <DiagramCanvas nodes={diagramNodes} edges={diagramEdges} onNodeMove={moveNode} />
-        <button class="primary" on:click={saveDiagram}>Save diagram</button>
+        <button class="primary" on:click={saveBoard}>Save whiteboard</button>
       </div>
-      <div>
-        <h3>Existing diagrams</h3>
-        <div class="diagram-list">
-          {#each $diagrams as diagram (diagram.id)}
-            <div class="diagram-item">
-              <p><strong>ID:</strong> {diagram.id}</p>
-              <div class="diagram-actions">
-                <label class="toggle">
-                  <input type="checkbox" checked={diagram.shared} on:change={() => toggleDiagramShare(diagram.id)} />
-                  <span>Share</span>
-                </label>
-                <button on:click={() => shareDiagram(diagram.id)}>Send to display now</button>
-              </div>
-              <DiagramCanvas nodes={diagram.nodes} edges={diagram.edges} readonly />
+
+      {#if error}
+        <div class="banner error">{error}</div>
+      {/if}
+      {#if status}
+        <div class="banner success">{status}</div>
+      {/if}
+
+      <WhiteboardSurface whiteboard={workingBoard} on:change={handleChange} />
+    </div>
+
+    <div class="panel side">
+      <h3>Saved whiteboards</h3>
+      <p class="helper">Load an existing board, share it, or jump back into editing.</p>
+      <div class="board-list">
+        {#each $whiteboards as board (board.id)}
+          <article class:selected={board.id === workingBoard.id}>
+            <div>
+              <h4>{board.title}</h4>
+              <p class="meta">{board.layers.length} layer(s) • {board.sticky_notes.length} sticky notes</p>
             </div>
-          {/each}
-        </div>
+            <div class="actions">
+              <button on:click={() => (selectedBoardId = board.id)}>Open</button>
+              <button class:active={board.shared} on:click={() => toggleShare(board)}>
+                {board.shared ? 'Shared' : 'Share'}
+              </button>
+              <button on:click={() => sendToDisplay(board)}>Send to display</button>
+            </div>
+          </article>
+        {/each}
+        {#if !$whiteboards.length}
+          <p class="helper">No boards yet—draw something and save it.</p>
+        {/if}
       </div>
     </div>
   </div>
@@ -191,124 +151,121 @@
     padding: 24px;
     color: #e8f0ff;
     max-width: 1200px;
-    margin: 0 auto;
+    margin: 0 auto 42px auto;
     display: flex;
     flex-direction: column;
     gap: 16px;
   }
-  header h1 {
-    margin: 0;
-  }
-  header p {
-    margin: 4px 0 0;
-    color: #b3c6e0;
-  }
-  .subtitle {
-    margin: 4px 0 12px 0;
-    color: #9bb8db;
-  }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 16px;
-  }
-  .panel {
-    background: #0f1c2e;
-    border: 1px solid #1e3a5f;
-    padding: 16px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  }
-  label {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-bottom: 12px;
-    color: #b3c6e0;
-  }
-  input,
-  select {
-    padding: 8px;
-    border-radius: 6px;
-    border: 1px solid #1e3a5f;
-    background: #0f253b;
-    color: #e8f0ff;
-  }
-  button {
-    padding: 10px 14px;
-    border-radius: 6px;
-    border: none;
-    background: #1e88e5;
-    color: white;
-    font-weight: 600;
-  }
-  button.primary {
-    margin-top: 8px;
-    width: 100%;
-  }
-  .note-list {
-    display: grid;
-    gap: 12px;
-  }
-  article {
-    border: 1px solid #1e3a5f;
-    border-radius: 8px;
-    padding: 12px;
-    background: #0f253b;
-  }
-  .note-head {
+  header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
   }
-  .toggle {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-weight: 600;
+  h1 {
+    margin: 4px 0;
   }
-  .diagram-grid {
+  .subtitle {
+    margin: 0;
+    color: #9bb8db;
+  }
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.8rem;
+    color: #7ba6e0;
+    margin: 0;
+  }
+  .columns {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: 1.8fr 1fr;
     gap: 16px;
+    align-items: start;
   }
-  .diagram-list {
+  .panel {
+    background: #0f1c2e;
+    border: 1px solid #1e3a5f;
+    padding: 16px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     display: flex;
     flex-direction: column;
     gap: 12px;
   }
-  .diagram-item {
-    border: 1px solid #1e3a5f;
-    border-radius: 8px;
-    padding: 12px;
-    background: #0f253b;
-  }
-  .diagram-actions {
+  .panel-head {
     display: flex;
     align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-bottom: 8px;
+    justify-content: space-between;
   }
-  .edge-form {
+  .side h3 {
+    margin: 0;
+  }
+  .side .helper {
+    color: #9bb8db;
+    margin: 0;
+  }
+  button {
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid #1e3a5f;
+    background: #17345c;
+    color: white;
+    font-weight: 600;
+  }
+  button.primary {
+    background: #1e88e5;
+    border-color: #42a5f5;
+  }
+  button.ghost {
+    background: transparent;
+  }
+  button.active {
+    background: #00c853;
+    border-color: #5efc82;
+  }
+  .banner {
+    padding: 10px 12px;
+    border-radius: 8px;
+  }
+  .banner.error {
+    background: #ffebee;
+    color: #b71c1c;
+  }
+  .banner.success {
+    background: #e2f3ff;
+    color: #0d47a1;
+  }
+  .board-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  article {
+    border: 1px solid #1e3a5f;
+    border-radius: 8px;
+    padding: 10px;
+    background: #0c1a2a;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  article.selected {
+    border-color: #42a5f5;
+  }
+  .meta {
+    margin: 0;
+    color: #9bb8db;
+  }
+  .actions {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
-    margin: 8px 0;
   }
-  .hint {
-    color: #b3c6e0;
-    font-size: 0.9rem;
-  }
-  .banner {
-    background: #ffcdd2;
-    color: #b71c1c;
-    padding: 10px;
-    border-radius: 8px;
-  }
-  @media (max-width: 600px) {
-    .note-head {
+  @media (max-width: 960px) {
+    .columns {
+      grid-template-columns: 1fr;
+    }
+    header {
       flex-direction: column;
       align-items: flex-start;
     }

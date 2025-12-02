@@ -19,7 +19,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from backend.models import AppState, Diagram, DisplayContent, Note
+from backend.models import AppState, Diagram, DisplayContent, Note, Whiteboard
 from backend.storage import load_state, save_state
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -80,6 +80,10 @@ def _find_note(note_id: UUID) -> Note | None:
 
 def _find_diagram(diagram_id: UUID) -> Diagram | None:
     return next((d for d in STATE.diagrams if str(d.id) == str(diagram_id)), None)
+
+
+def _find_whiteboard(board_id: UUID) -> Whiteboard | None:
+    return next((b for b in STATE.whiteboards if str(b.id) == str(board_id)), None)
 
 
 def _persist_state() -> None:
@@ -151,6 +155,34 @@ async def update_diagram(diagram_id: UUID, diagram_update: Diagram) -> Diagram:
     _persist_state()
     await manager.broadcast({"event": "diagram_changed", "diagram": updated_diagram.dict()})
     return updated_diagram
+
+
+@app.get("/whiteboards", response_model=List[Whiteboard])
+async def list_whiteboards() -> List[Whiteboard]:
+    return STATE.whiteboards
+
+
+@app.post("/whiteboards", response_model=Whiteboard, status_code=201)
+async def create_whiteboard(board: Whiteboard) -> Whiteboard:
+    STATE.whiteboards.append(board)
+    _persist_state()
+    await manager.broadcast({"event": "whiteboard_changed", "whiteboard": board.dict()})
+    return board
+
+
+@app.patch("/whiteboards/{board_id}", response_model=Whiteboard)
+async def update_whiteboard(board_id: UUID, board_update: Whiteboard) -> Whiteboard:
+    existing = _find_whiteboard(board_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Whiteboard not found")
+
+    updated_board = board_update.copy(update={"id": existing.id})
+    STATE.whiteboards = [
+        updated_board if str(b.id) == str(board_id) else b for b in STATE.whiteboards
+    ]
+    _persist_state()
+    await manager.broadcast({"event": "whiteboard_changed", "whiteboard": updated_board.dict()})
+    return updated_board
 
 
 @app.put("/display", response_model=DisplayContent)

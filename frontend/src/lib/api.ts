@@ -1,4 +1,4 @@
-import type { AppState, Diagram, DisplayContent, Note } from './types';
+import type { AppState, Diagram, DisplayContent, Note, Whiteboard } from './types';
 
 const { protocol, hostname, port } = window.location;
 const apiPort = port === '5173' ? '8000' : port;
@@ -52,6 +52,20 @@ export async function updateDiagram(diagram: Diagram): Promise<Diagram> {
   return jsonRequest<Diagram>(`${baseUrl}/diagrams/${diagram.id}`, {
     method: 'PATCH',
     body: JSON.stringify(diagram)
+  });
+}
+
+export async function createWhiteboard(board: Whiteboard): Promise<Whiteboard> {
+  return jsonRequest<Whiteboard>(`${baseUrl}/whiteboards`, {
+    method: 'POST',
+    body: JSON.stringify(board)
+  });
+}
+
+export async function updateWhiteboard(board: Whiteboard): Promise<Whiteboard> {
+  return jsonRequest<Whiteboard>(`${baseUrl}/whiteboards/${board.id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(board)
   });
 }
 
