@@ -1,12 +1,17 @@
 <script lang="ts">
-  import DiagramCanvas from '$lib/DiagramCanvas.svelte';
-  import MarkdownView from '$lib/MarkdownView.svelte';
-  import { diagrams, display, notes } from '$lib/state';
+import DiagramCanvas from '$lib/DiagramCanvas.svelte';
+import MarkdownView from '$lib/MarkdownView.svelte';
+import { diagrams, display, notes, whiteboards } from '$lib/state';
+import WhiteboardViewer from '$lib/whiteboard/WhiteboardViewer.svelte';
 
   $: activeDisplay = $display;
   $: currentNote = activeDisplay?.type === 'note' ? $notes.find((n) => n.id === activeDisplay.id) : null;
   $: currentDiagram =
     activeDisplay?.type === 'diagram' ? $diagrams.find((d) => d.id === activeDisplay.id) : null;
+  $: currentWhiteboard =
+    activeDisplay?.type === 'whiteboard'
+      ? $whiteboards.find((w) => w.id === activeDisplay.id)
+      : null;
 </script>
 
 <section class="display">
@@ -20,6 +25,8 @@
   {:else if activeDisplay.type === 'diagram' && currentDiagram}
     <h1>Shared diagram</h1>
     <DiagramCanvas nodes={currentDiagram.nodes} edges={currentDiagram.edges} readonly />
+  {:else if activeDisplay.type === 'whiteboard' && currentWhiteboard}
+    <WhiteboardViewer whiteboard={currentWhiteboard} />
   {:else}
     <h1>Content not found</h1>
     <p class="subtitle">The shared item was removed.</p>

@@ -2,16 +2,18 @@ import { derived, writable } from 'svelte/store';
 import {
   createDiagram,
   createNote,
+  createWhiteboard,
   createSocket,
   deleteNote,
   fetchState,
   setDisplay,
   updateDiagram,
-  updateNote
+  updateNote,
+  updateWhiteboard
 } from './api';
-import type { AppState, Diagram, DisplayContent, Note, WsEventMap } from './types';
+import type { AppState, Diagram, DisplayContent, Note, Whiteboard, WsEventMap } from './types';
 
-const initialState: AppState = { notes: [], diagrams: [], display: null };
+const initialState: AppState = { notes: [], diagrams: [], whiteboards: [], display: null };
 const state = writable<AppState>(initialState);
 
 fetchState().then((data) => state.set(data)).catch((error) => console.error(error));
@@ -37,6 +39,13 @@ createSocket((data: unknown) => {
         const diag = event.diagram as Diagram;
         return { ...current, diagrams: [...current.diagrams.filter((d) => d.id !== diag.id), diag] };
       }
+      case 'whiteboard_changed': {
+        const board = event.whiteboard as Whiteboard;
+        return {
+          ...current,
+          whiteboards: [...current.whiteboards.filter((w) => w.id !== board.id), board]
+        };
+      }
       case 'display_changed':
         return { ...current, display: event.display as DisplayContent };
       default:
@@ -48,6 +57,7 @@ createSocket((data: unknown) => {
 export const notes = derived(state, ($s) => $s.notes);
 export const diagrams = derived(state, ($s) => $s.diagrams);
 export const display = derived(state, ($s) => $s.display);
+export const whiteboards = derived(state, ($s) => $s.whiteboards);
 
 export async function submitNote(payload: Omit<Note, 'id'>): Promise<void> {
   const created = await createNote(payload);
@@ -83,4 +93,19 @@ export async function patchDiagram(diagram: Diagram): Promise<void> {
 export async function updateDisplay(displayContent: DisplayContent): Promise<void> {
   const result = await setDisplay(displayContent);
   state.update((current) => ({ ...current, display: result }));
+}
+
+export async function submitWhiteboard(board: Whiteboard): Promise<Whiteboard> {
+  const created = await createWhiteboard(board);
+  state.update((current) => ({ ...current, whiteboards: [...current.whiteboards, created] }));
+  return created;
+}
+
+export async function patchWhiteboard(board: Whiteboard): Promise<Whiteboard> {
+  const updated = await updateWhiteboard(board);
+  state.update((current) => ({
+    ...current,
+    whiteboards: current.whiteboards.map((b) => (b.id === updated.id ? updated : b))
+  }));
+  return updated;
 }
